@@ -328,20 +328,23 @@ class RAM_plus(nn.Module):
         tag[:,self.delete_tag_index] = 0
         tag_output = []
         tag_output_chinese = []
+        scores = []
         for b in range(bs):
             index = np.argwhere(tag[b] == 1)
             token = self.tag_list[index].squeeze(axis=1)
             tag_output.append(' | '.join(token))
             token_chinese = self.tag_list_chinese[index].squeeze(axis=1)
             tag_output_chinese.append(' | '.join(token_chinese))
+            batch_scores = logits[
+                b, index].cpu().numpy()  # Fetch all scores for detected tags
+            scores_str = ' | '.join([str(score.squeeze()) for score in
+                                     batch_scores])  # Convert scores to string and join
+            scores.append(scores_str)  # Append formatted scores string for this batch
 
-
-        return tag_output, tag_output_chinese
+        return tag_output, tag_output_chinese, scores
 
     def generate_tag_openset(self,
                  image,
-                 threshold=0.68,
-                 tag_input=None,
                  ):
 
         image_embeds = self.image_proj(self.visual_encoder(image))
@@ -390,12 +393,18 @@ class RAM_plus(nn.Module):
         tag = targets.cpu().numpy()
         tag[:,self.delete_tag_index] = 0
         tag_output = []
+        scores = []
         for b in range(bs):
-            index = np.argwhere(tag[b] == 1)
-            token = self.tag_list[index].squeeze(axis=1)
-            tag_output.append(' | '.join(token))
+            index = np.argwhere(tag[b] == 1).flatten()  # Get all positive indices
+            tokens = self.tag_list[index].squeeze(axis=1)  # Fetch all tags
+            tag_output.append(' | '.join(tokens))
+            batch_scores = logits[
+                b, index].cpu().numpy()  # Fetch all scores for detected tags
+            scores_str = ' | '.join([str(score.squeeze()) for score in
+                                     batch_scores])  # Convert scores to string and join
+            scores.append(scores_str)  # Append formatted scores string for this batch
 
-        return tag_output
+        return tag_output, scores
 
 
 # load RAM++ pretrained model parameters
